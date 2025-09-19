@@ -1,0 +1,38 @@
+{
+  "name": "azure-work-item-search-widget",
+  "version": "1.0.0",
+  "description": "Enhanced dashboard widget for searching Azure Boards work items with intelligent field detection, flexible date ranges, and smart query building capabilities",
+  "main": "search-widget.html",
+  "scripts": {
+    "build": "powershell -ExecutionPolicy Bypass -File ./build-extension.ps1",
+    "clean": "Remove-Item *.vsix -Force -ErrorAction SilentlyContinue",
+    "package": "tfx extension create --manifest-globs vss-extension.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/draj0/azure-work-item-search.git"
+  },
+  "keywords": [
+    "azure-devops",
+    "extension",
+    "work-items",
+    "search",
+    "dashboard",
+    "widget"
+  ],
+  "author": "drajan",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/draj0/azure-work-item-search/issues"
+  },
+  "homepage": "https://github.com/draj0/azure-work-item-search#readme",
+  "dependencies": {
+    "vss-web-extension-sdk": "^5.141.0"
+  },
+  "devDependencies": {
+    "tfx-cli": "^0.22.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

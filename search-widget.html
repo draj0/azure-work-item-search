@@ -1,0 +1,1105 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Search Work Item Widget</title>
+    <script src="sdk/scripts/VSS.SDK.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        /* Container and Layout */
+        .widget-container { 
+            padding: 16px; 
+            font-family: Segoe UI, Arial, sans-serif;
+            background: #f3f6fb;
+            border: 1px solid #d1e6fa;
+            border-radius: 8px;
+            height: 100%;
+            box-sizing: border-box;
+        }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 16px; 
+        }
+        .search-section { 
+            margin-bottom: 16px; 
+        }
+        .search-controls { 
+            display: flex; 
+            gap: 8px; 
+        }
+        .search-input-container {
+            flex: 2;
+            position: relative;
+        }
+        
+        /* Typography */
+        .title { 
+            font-size: 18px; 
+            font-weight: 600; 
+            color: #0078d4; 
+        }
+        
+        /* Buttons */
+        .config-toggle { 
+            background: none; 
+            border: none; 
+            font-size: 18px; 
+            cursor: pointer; 
+            padding: 8px;
+        }
+        .search-button { 
+            padding: 8px 16px; 
+            background: #0078d4; 
+            color: white; 
+            border: none; 
+            cursor: pointer; 
+        }
+        
+        /* Form Elements */
+        .search-input { 
+            width: 100%;
+            padding: 8px; 
+            border: 1px solid #ccc; 
+            box-sizing: border-box;
+        }
+        .search-select { 
+            flex: 1; 
+            padding: 8px; 
+            border: 1px solid #ccc; 
+        }
+        
+        /* Configuration Panel */
+        .config-panel { 
+            background: white; 
+            border: 2px solid #0078d4; 
+            padding: 16px; 
+            margin-bottom: 16px; 
+            display: none;
+            border-radius: 6px;
+        }
+        
+        /* Results and Work Items */
+        .results { 
+            border: 1px solid #e0e0e0; 
+            padding: 16px; 
+            min-height: 100px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .work-item {
+            border: 1px solid #ddd;
+            margin: 8px 0;
+            padding: 12px;
+            background: #fff;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .work-item:hover {
+            background: #f8f9fa;
+            border-color: #0078d4;
+            box-shadow: 0 2px 4px rgba(0,120,212,0.1);
+        }
+        .work-item-title {
+            font-weight: bold;
+            color: #0078d4;
+            margin-bottom: 4px;
+        }
+        .work-item-id {
+            color: #666;
+            font-size: 12px;
+        }
+        .work-item-type {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        .work-item-state {
+            background: #f1f8e9;
+            color: #388e3c;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        
+        /* Status Messages */
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: none;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 70%;
+            overflow-y: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #0078d4;
+        }
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+        .close:hover {
+            color: #000;
+        }
+        .detail-row {
+            margin: 10px 0;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .detail-label {
+            font-weight: bold;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        .detail-value {
+            color: #333;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="widget-container">
+        <div class="header">
+            <div class="title">Search Work Items</div>
+            <button class="config-toggle" onclick="toggleConfig()">⚙️</button>
+        </div>
+        
+        <div class="config-panel" id="configPanel">
+            <h4>Widget Configuration</h4>
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: 600; margin-bottom: 5px;">Default Search Field:</label>
+                <select id="defaultField" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; max-height: 200px;">
+                    <option value="System.Title">Title</option>
+                    <option value="System.Description">Description</option>
+                    <option value="System.Tags">Tags</option>
+                    <option value="System.AssignedTo">Assigned To</option>
+                    <option value="System.Id">ID</option>
+                </select>
+                <small style="margin-top: 5px; font-size: 12px; color: #666; display: block;">
+                    This setting will be saved locally for this browser
+                </small>
+            </div>
+            <div>
+                <button onclick="saveConfig()" style="background: #0078d4; color: white; border: none; padding: 8px 16px; border-radius: 4px; margin-right: 8px;">Save</button>
+                <button onclick="cancelConfig()" style="background: #ccc; color: #333; border: none; padding: 8px 16px; border-radius: 4px;">Cancel</button>
+            </div>
+        </div>
+        
+        <div class="search-section">
+            <div class="search-controls">
+                <select class="search-select" id="searchField">
+                    <option value="System.Title">Title</option>
+                    <option value="System.Description">Description</option>
+                    <option value="System.Tags">Tags</option>
+                    <option value="System.AssignedTo">Assigned To</option>
+                    <option value="System.CreatedDate">Created Date</option>
+                    <option value="System.Id">ID</option>
+                </select>
+                <div class="search-input-container">
+                    <input type="text" class="search-input" id="searchInput" placeholder="Enter search term">
+                    <input type="date" class="search-input" id="searchDateInput" style="display: none;" onchange="handleDateChange()">
+                    <select class="search-input" id="searchDatePreset" style="display: none;" onchange="handlePresetChange()">
+                        <option value="">Choose date range...</option>
+                        <option value="any">Any (Show all items with dates)</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="recent">Recent (Last Week)</option>
+                        <option value="this week">This Week</option>
+                        <option value="last week">Last Week</option>
+                        <option value="this month">This Month</option>
+                        <option value="last month">Last Month</option>
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="thursday">Thursday</option>
+                        <option value="friday">Friday</option>
+                        <option value="saturday">Saturday</option>
+                        <option value="sunday">Sunday</option>
+                        <option value="january">January</option>
+                        <option value="february">February</option>
+                        <option value="march">March</option>
+                        <option value="april">April</option>
+                        <option value="may">May</option>
+                        <option value="june">June</option>
+                        <option value="july">July</option>
+                        <option value="august">August</option>
+                        <option value="september">September</option>
+                        <option value="october">October</option>
+                        <option value="november">November</option>
+                        <option value="december">December</option>
+                        <option value="custom">Custom (type below)</option>
+                    </select>
+                </div>
+                <button class="search-button" onclick="performSearch()">Search</button>
+            </div>
+        </div>
+        
+        <div class="results" id="results">
+            Enter a search term to find work items
+        </div>
+    </div>
+
+    <!-- Work Item Details Modal -->
+    <div id="workItemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title" id="modalTitle">Work Item Details</div>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div id="modalBody">
+                <!-- Work item details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        VSS.init({ explicitNotifyLoaded: true, usePlatformScripts: true });
+
+        let restClient;
+        let webContext;
+        let widgetHelpers;
+        let allFields = []; // Store field definitions for type checking
+        let pendingWidgetSettings = null; // Store widget settings until fields are loaded
+
+        VSS.require(["TFS/Dashboards/WidgetHelpers", "TFS/WorkItemTracking/RestClient", "VSS/Context"], 
+        function (WidgetHelpers, WorkItemTrackingRestClient, VSSContext) {
+            webContext = VSSContext.getDefaultWebContext();
+            restClient = WorkItemTrackingRestClient.getClient();
+            widgetHelpers = WidgetHelpers;
+            
+            // Initialize the interface
+            initializeInterface();
+            
+            // Load all available work item fields
+            loadAllFields();
+            
+            // Add global Enter key listener as backup
+            document.addEventListener('keypress', function(event) {
+                if (event.key === 'Enter') {
+                    const activeElement = document.activeElement;
+                    if (activeElement && (
+                        activeElement.id === 'searchInput' || 
+                        activeElement.id === 'searchDateInput' || 
+                        activeElement.id === 'searchDatePreset'
+                    )) {
+                        event.preventDefault();
+                        performSearch();
+                    }
+                }
+            });
+            
+            VSS.register("WorkItemSearchWidget", function () {
+                return {
+                    load: function (widgetSettings) {
+                        pendingWidgetSettings = widgetSettings;
+                        // Configuration will be loaded after fields are loaded
+                        return WidgetHelpers.WidgetStatusHelper.Success();
+                    },
+                    reload: function (widgetSettings) {
+                        pendingWidgetSettings = widgetSettings;
+                        // Reload configuration after fields are available
+                        if (allFields.length > 0) {
+                            loadConfiguration(widgetSettings);
+                        }
+                        return WidgetHelpers.WidgetStatusHelper.Success();
+                    }
+                };
+            });
+
+            
+            VSS.notifyLoadSucceeded();
+        });
+
+        function initializeInterface() {
+            // Basic initialization - main event setup happens in setupEventListeners
+        }
+
+        function setupEventListeners() {
+            // Search field dropdown change listener
+            const searchFieldSelect = document.getElementById('searchField');
+            if (searchFieldSelect) {
+                searchFieldSelect.addEventListener('change', checkFieldType);
+            }
+            
+            // Enter key listeners for all search inputs
+            const inputs = [
+                { id: 'searchInput', events: ['keypress', 'keydown'] },
+                { id: 'searchDateInput', events: ['keypress', 'keydown'] },
+                { id: 'searchDatePreset', events: ['keypress', 'keydown'] }
+            ];
+            
+            inputs.forEach(input => {
+                const element = document.getElementById(input.id);
+                if (element) {
+                    input.events.forEach(eventType => {
+                        element.addEventListener(eventType, function(event) {
+                            if (event.key === 'Enter' || event.keyCode === 13) {
+                                event.preventDefault();
+                                performSearch();
+                            }
+                        });
+                    });
+                }
+            });
+        }
+
+        async function loadAllFields() {
+            try {
+                // Get all work item fields from the project
+                const fields = await restClient.getFields(webContext.project.name);
+                
+                // Include ALL fields with minimal filtering - only exclude truly unusable ones
+                const searchableFields = fields.filter(field => {
+                    // Only exclude fields that are truly not searchable or cause errors
+                    // Keep history and html fields as users might want to search in them
+                    return field.type !== 'treePath' &&  // Tree path fields are not useful for search
+                           field.referenceName &&        // Must have a reference name
+                           field.name;                    // Must have a display name
+                }).sort((a, b) => a.name.localeCompare(b.name));
+
+                // Store field definitions globally for type checking during search
+                allFields = fields;
+
+                // Update both dropdowns
+                const searchFieldSelect = document.getElementById('searchField');
+                const defaultFieldSelect = document.getElementById('defaultField');
+                
+                if (searchFieldSelect && defaultFieldSelect) {
+                    // Clear existing options (except the first default one in search field)
+                    const searchFirstOption = searchFieldSelect.children[0];
+                    searchFieldSelect.innerHTML = '';
+                    searchFieldSelect.appendChild(searchFirstOption);
+                    
+                    defaultFieldSelect.innerHTML = '';
+                    
+                    // Add all fields to both dropdowns
+                    searchableFields.forEach(field => {
+                        // Create option for search dropdown
+                        const searchOption = document.createElement('option');
+                        searchOption.value = field.referenceName;
+                        searchOption.textContent = field.name;
+                        searchFieldSelect.appendChild(searchOption);
+                        
+                        // Create option for default field dropdown
+                        const defaultOption = document.createElement('option');
+                        defaultOption.value = field.referenceName;
+                        defaultOption.textContent = field.name;
+                        defaultFieldSelect.appendChild(defaultOption);
+                    });
+                    
+                    // Setup all event listeners
+                    setupEventListeners();
+                    
+                    // Call checkFieldType initially to set up the UI for the default field
+                    checkFieldType();
+                    
+                    // Load configuration now that fields are available
+                    if (pendingWidgetSettings) {
+                        loadConfiguration(pendingWidgetSettings);
+                        pendingWidgetSettings = null; // Clear after loading
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load work item fields:', error);
+                // Fall back to default fields if API call fails
+                
+                // Populate defaultField dropdown with fallback options
+                const defaultFieldSelect = document.getElementById('defaultField');
+                if (defaultFieldSelect) {
+                    defaultFieldSelect.innerHTML = '';
+                    
+                    const fallbackFields = [
+                        { key: 'System.Title', label: 'Title' },
+                        { key: 'System.Description', label: 'Description' },
+                        { key: 'System.Tags', label: 'Tags' },
+                        { key: 'System.AssignedTo', label: 'Assigned To' },
+                        { key: 'System.CreatedDate', label: 'Created Date' },
+                        { key: 'System.Id', label: 'ID' }
+                    ];
+                    
+                    fallbackFields.forEach(field => {
+                        const option = document.createElement('option');
+                        option.value = field.key;
+                        option.textContent = field.label;
+                        defaultFieldSelect.appendChild(option);
+                    });
+                    
+                    // Setup all event listeners (fallback)
+                    setupEventListeners();
+                    
+                    // Load configuration now that fallback fields are available
+                    if (pendingWidgetSettings) {
+                        loadConfiguration(pendingWidgetSettings);
+                        pendingWidgetSettings = null; // Clear after loading
+                    }
+                }
+            }
+        }
+
+        function checkFieldType() {
+            const selectedField = document.getElementById('searchField').value;
+            const fieldDef = allFields.find(f => f.referenceName === selectedField);
+            
+            const textInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('searchDateInput');
+            const presetSelect = document.getElementById('searchDatePreset');
+            
+            // Check if this is a datetime field - be more flexible with type detection
+            let isDateField = false;
+            if (fieldDef && fieldDef.type) {
+                const fieldType = (typeof fieldDef.type === 'string' ? fieldDef.type : String(fieldDef.type)).toLowerCase();
+                isDateField = fieldType === 'datetime' || fieldType === 'date' || fieldType.includes('date');
+            }
+            
+            // Also check by field name patterns for common date fields
+            if (!isDateField && selectedField) {
+                // More precise date field patterns - look for common date field endings and specific patterns
+                const fieldNameLower = selectedField.toLowerCase();
+                const dateFieldPatterns = [
+                    /date$/,           // ends with "date"
+                    /createdon$/,      // ends with "createdon"
+                    /modifiedon$/,     // ends with "modifiedon"
+                    /changedon$/,      // ends with "changedon"
+                    /closedon$/,       // ends with "closedon"
+                    /resolvedon$/,     // ends with "resolvedon"
+                    /activatedon$/,    // ends with "activatedon"
+                    /acceptedon$/,     // ends with "acceptedon"
+                    /completedon$/,    // ends with "completedon"
+                    /startedon$/,      // ends with "startedon"
+                    /finishedon$/      // ends with "finishedon"
+                ];
+                isDateField = dateFieldPatterns.some(pattern => pattern.test(fieldNameLower));
+            }
+            
+            if (isDateField) {
+                // Show date inputs, hide text input
+                textInput.style.display = 'none';
+                dateInput.style.display = 'block';
+                presetSelect.style.display = 'block';
+                
+                // Update placeholder
+                textInput.placeholder = 'Enter date (YYYY-MM-DD, today, this week, etc.)';
+            } else {
+                // Show text input, hide date inputs
+                textInput.style.display = 'block';
+                dateInput.style.display = 'none';
+                presetSelect.style.display = 'none';
+                
+                // Update placeholder based on field type
+                if (fieldDef) {
+                    const fieldType = (typeof fieldDef.type === 'string' ? fieldDef.type : String(fieldDef.type)).toLowerCase();
+                    switch (fieldType) {
+                        case 'integer':
+                        case 'double':
+                        case 'decimal':
+                        case 'float':
+                        case 'number':
+                            textInput.placeholder = 'Enter number (e.g., 123)';
+                            break;
+                        case 'boolean':
+                            textInput.placeholder = 'Enter true or false';
+                            break;
+                        default:
+                            textInput.placeholder = 'Enter search term';
+                    }
+                } else {
+                    textInput.placeholder = 'Enter search term';
+                }
+            }
+            
+            // Clear previous values
+            textInput.value = '';
+            dateInput.value = '';
+            presetSelect.value = '';
+        }
+
+        function handleDateChange() {
+            updateSearchTerm('date');
+        }
+
+        function handlePresetChange() {
+            updateSearchTerm('preset');
+        }
+
+        function updateSearchTerm(source) {
+            const textInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('searchDateInput');
+            const presetSelect = document.getElementById('searchDatePreset');
+            
+            if (source === 'date' && dateInput.value) {
+                textInput.value = dateInput.value;
+                presetSelect.value = '';
+            } else if (source === 'preset' && presetSelect.value) {
+                if (presetSelect.value === 'custom') {
+                    textInput.style.display = 'block';
+                    textInput.value = '';
+                    textInput.focus();
+                } else {
+                    textInput.value = presetSelect.value;
+                    dateInput.value = '';
+                }
+            }
+        }
+
+        function loadConfiguration(widgetSettings) {
+            try {
+                // Try localStorage first for immediate functionality
+                const savedConfig = localStorage.getItem('searchWidgetConfig');
+                if (savedConfig) {
+                    const config = JSON.parse(savedConfig);
+                    if (config.defaultField) {
+                        const defaultFieldSelect = document.getElementById('defaultField');
+                        const searchFieldSelect = document.getElementById('searchField');
+                        if (defaultFieldSelect) defaultFieldSelect.value = config.defaultField;
+                        if (searchFieldSelect) searchFieldSelect.value = config.defaultField;
+                        checkFieldType(); // Update UI based on restored field
+                        return;
+                    }
+                }
+
+                // Fallback to widget settings if available (but they don't seem to work)
+                const customSettings = widgetSettings.customSettings;
+                if (customSettings && customSettings.data) {
+                    const config = JSON.parse(customSettings.data);
+                    if (config.defaultField) {
+                        const defaultFieldSelect = document.getElementById('defaultField');
+                        const searchFieldSelect = document.getElementById('searchField');
+                        if (defaultFieldSelect) defaultFieldSelect.value = config.defaultField;
+                        if (searchFieldSelect) searchFieldSelect.value = config.defaultField;
+                        checkFieldType(); // Update UI based on restored field
+                    }
+                }
+            } catch (error) {
+                console.log('No saved configuration found or error loading:', error);
+            }
+        }
+
+        function toggleConfig() {
+            const panel = document.getElementById('configPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveConfig() {
+            const defaultField = document.getElementById('defaultField').value;
+            
+            try {
+                // Save to localStorage
+                const config = { defaultField: defaultField };
+                localStorage.setItem('searchWidgetConfig', JSON.stringify(config));
+                
+                // Update the search field dropdown immediately
+                const searchFieldSelect = document.getElementById('searchField');
+                if (searchFieldSelect) {
+                    searchFieldSelect.value = defaultField;
+                }
+                
+                document.getElementById('configPanel').style.display = 'none';
+                alert('Configuration saved! Default search field set to: ' + defaultField.replace('System.', ''));
+            } catch (error) {
+                console.error('Error saving configuration:', error);
+                alert('Error saving configuration. Please try again.');
+            }
+        }
+
+        function cancelConfig() {
+            document.getElementById('configPanel').style.display = 'none';
+        }
+
+        function handleDateField(fieldReferenceName, searchTerm) {
+            // Enhanced date searching with multiple formats and flexible matching
+            const searchLower = searchTerm.toLowerCase().trim();
+            
+            // Exact date formats: YYYY-MM-DD, MM/DD/YYYY, DD/MM/YYYY
+            const exactDatePatterns = [
+                /^\d{4}-\d{1,2}-\d{1,2}$/,           // 2024-01-15, 2024-1-15
+                /^\d{1,2}\/\d{1,2}\/\d{4}$/,         // 1/15/2024, 01/15/2024
+                /^\d{1,2}-\d{1,2}-\d{4}$/            // 1-15-2024, 01-15-2024
+            ];
+            
+            // Check for exact date patterns
+            if (exactDatePatterns.some(pattern => pattern.test(searchTerm))) {
+                // For exact dates, find items within that specific date (00:00:00 to 23:59:59)
+                const date = new Date(searchTerm);
+                const nextDay = new Date(date);
+                nextDay.setDate(date.getDate() + 1);
+                
+                const dateStr = date.toISOString().split('T')[0];
+                const nextDayStr = nextDay.toISOString().split('T')[0];
+                
+                const query = `([${fieldReferenceName}] >= '${dateStr}' AND [${fieldReferenceName}] < '${nextDayStr}')`;
+                console.log(`Exact date query for ${fieldReferenceName}: ${query}`);
+                console.log(`Date range: ${dateStr} to ${nextDayStr} (exclusive)`);
+                return query;
+            }
+            
+            // Year only (e.g., "2024")
+            if (/^\d{4}$/.test(searchTerm)) {
+                const year = searchTerm;
+                return `([${fieldReferenceName}] >= '${year}-01-01' AND [${fieldReferenceName}] < '${parseInt(year) + 1}-01-01')`;
+            }
+            
+            // Year-Month (e.g., "2024-01", "2024/01")
+            const yearMonthMatch = searchTerm.match(/^(\d{4})[-\/](\d{1,2})$/);
+            if (yearMonthMatch) {
+                const year = yearMonthMatch[1];
+                const month = yearMonthMatch[2].padStart(2, '0');
+                const nextMonth = month === '12' ? '01' : (parseInt(month) + 1).toString().padStart(2, '0');
+                const nextYear = month === '12' ? (parseInt(year) + 1).toString() : year;
+                return `([${fieldReferenceName}] >= '${year}-${month}-01' AND [${fieldReferenceName}] < '${nextYear}-${nextMonth}-01')`;
+            }
+            
+            // Month names (e.g., "January", "Jan", "january")
+            const months = {
+                'january': '01', 'jan': '01',
+                'february': '02', 'feb': '02',
+                'march': '03', 'mar': '03',
+                'april': '04', 'apr': '04',
+                'may': '05',
+                'june': '06', 'jun': '06',
+                'july': '07', 'jul': '07',
+                'august': '08', 'aug': '08',
+                'september': '09', 'sep': '09', 'sept': '09',
+                'october': '10', 'oct': '10',
+                'november': '11', 'nov': '11',
+                'december': '12', 'dec': '12'
+            };
+            
+            if (months[searchLower]) {
+                const currentYear = new Date().getFullYear();
+                const month = months[searchLower];
+                const nextMonth = month === '12' ? '01' : (parseInt(month) + 1).toString().padStart(2, '0');
+                const nextYear = month === '12' ? (currentYear + 1).toString() : currentYear.toString();
+                return `([${fieldReferenceName}] >= '${currentYear}-${month}-01' AND [${fieldReferenceName}] < '${nextYear}-${nextMonth}-01')`;
+            }
+            
+            // Relative terms (e.g., "today", "yesterday", "this week")
+                const today = new Date();
+                const todayStr = today.toISOString().split('T')[0];
+                
+                if (searchLower === 'today') {
+                    const tomorrow = new Date(today);
+                    tomorrow.setDate(tomorrow.getDate() + 1);
+                    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                    return `([${fieldReferenceName}] >= '${todayStr}' AND [${fieldReferenceName}] < '${tomorrowStr}')`;
+                }            if (searchLower === 'yesterday') {
+                const yesterday = new Date(today);
+                yesterday.setDate(yesterday.getDate() - 1);
+                const yesterdayStr = yesterday.toISOString().split('T')[0];
+                return `([${fieldReferenceName}] >= '${yesterdayStr}' AND [${fieldReferenceName}] < '${todayStr}')`;
+            }
+            
+            if (searchLower === 'this week' || searchLower === 'week') {
+                const weekStart = new Date(today);
+                weekStart.setDate(today.getDate() - today.getDay()); // Start of week (Sunday)
+                const weekStartStr = weekStart.toISOString().split('T')[0];
+                return `[${fieldReferenceName}] >= '${weekStartStr}'`;
+            }
+            
+            if (searchLower === 'this month' || searchLower === 'month') {
+                const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+                const monthStartStr = monthStart.toISOString().split('T')[0];
+                return `[${fieldReferenceName}] >= '${monthStartStr}'`;
+            }
+            
+            // Add more flexible date terms
+            if (searchLower === 'recent' || searchLower === 'last week') {
+                const weekAgo = new Date(today);
+                weekAgo.setDate(today.getDate() - 7);
+                const weekAgoStr = weekAgo.toISOString().split('T')[0];
+                return `[${fieldReferenceName}] >= '${weekAgoStr}'`;
+            }
+            
+            if (searchLower === 'last month') {
+                const monthAgo = new Date(today);
+                monthAgo.setMonth(today.getMonth() - 1);
+                const monthAgoStr = monthAgo.toISOString().split('T')[0];
+                return `[${fieldReferenceName}] >= '${monthAgoStr}'`;
+            }
+            
+            // Days of week
+            const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+            const dayIndex = daysOfWeek.indexOf(searchLower);
+            if (dayIndex !== -1) {
+                // Find the most recent occurrence of this day
+                const targetDay = new Date(today);
+                const daysBack = (today.getDay() - dayIndex + 7) % 7;
+                targetDay.setDate(today.getDate() - daysBack);
+                const targetDayStr = targetDay.toISOString().split('T')[0];
+                const nextDay = new Date(targetDay);
+                nextDay.setDate(nextDay.getDate() + 1);
+                const nextDayStr = nextDay.toISOString().split('T')[0];
+                return `([${fieldReferenceName}] >= '${targetDayStr}' AND [${fieldReferenceName}] < '${nextDayStr}')`;
+            }
+            
+            // Special debug term to find any items with this field populated
+            if (searchLower === 'any' || searchLower === 'all') {
+                return `[${fieldReferenceName}] <> ''`;
+            }
+            
+            // If none of the patterns match, return no results
+            return `[System.Id] = -999999`;
+        }
+
+        function buildSearchQuery(fieldReferenceName, searchTerm) {
+            // Find the field definition to determine the correct operator
+            const fieldDef = allFields.find(f => f.referenceName === fieldReferenceName);
+            
+            if (!fieldDef || !fieldDef.type) {
+                // Fallback to CONTAINS for unknown fields or missing type
+                return `[${fieldReferenceName}] CONTAINS '${searchTerm}'`;
+            }
+
+            // Safely get the field type as string
+            const fieldType = (typeof fieldDef.type === 'string' ? fieldDef.type : String(fieldDef.type)).toLowerCase();
+
+            // Check if this should be treated as a date field (by type or name)
+            let treatAsDateField = fieldType === 'datetime' || fieldType === 'date' || fieldType.includes('date');
+            if (!treatAsDateField && fieldReferenceName) {
+                // More precise date field patterns - look for common date field endings and specific patterns
+                const fieldNameLower = fieldReferenceName.toLowerCase();
+                const dateFieldPatterns = [
+                    /date$/,           // ends with "date"
+                    /createdon$/,      // ends with "createdon"
+                    /modifiedon$/,     // ends with "modifiedon"
+                    /changedon$/,      // ends with "changedon"
+                    /closedon$/,       // ends with "closedon"
+                    /resolvedon$/,     // ends with "resolvedon"
+                    /activatedon$/,    // ends with "activatedon"
+                    /acceptedon$/,     // ends with "acceptedon"
+                    /completedon$/,    // ends with "completedon"
+                    /startedon$/,      // ends with "startedon"
+                    /finishedon$/      // ends with "finishedon"
+                ];
+                treatAsDateField = dateFieldPatterns.some(pattern => pattern.test(fieldNameLower));
+            }
+
+            // Choose operator based on field type
+            switch (fieldType) {
+                case 'string':
+                case 'plaintext':
+                case 'html':
+                case 'history':
+                    // Unless it's actually a date field by name
+                    if (treatAsDateField) {
+                        // Jump to date handling logic
+                        return handleDateField(fieldReferenceName, searchTerm);
+                    }
+                    return `[${fieldReferenceName}] CONTAINS '${searchTerm}'`;
+                
+                case 'datetime':
+                case 'date':
+                    return handleDateField(fieldReferenceName, searchTerm);
+                case 'double':
+                case 'decimal':
+                case 'float':
+                case 'number':
+                    // For numeric fields, support partial matching
+                    if (!isNaN(searchTerm) && searchTerm.trim() !== '') {
+                        const searchNum = parseFloat(searchTerm);
+                        const searchStr = searchTerm.trim();
+                        
+                        // If it's a whole number and less than 6 digits, do partial matching
+                        if (Number.isInteger(searchNum) && searchStr.length <= 5) {
+                            // Create range for partial matching: 12 matches 120-129, 123, etc.
+                            const lowerBound = searchNum * Math.pow(10, 0); // 12
+                            const upperBound = (searchNum + 1) * Math.pow(10, 0) - 1; // 12
+                            
+                            // For partial matching, we need a more complex approach
+                            // Option 1: Exact match
+                            // Option 2: Starts with pattern (e.g., 120-129 for search "12")
+                            const nextPowerOf10 = Math.pow(10, Math.ceil(Math.log10(searchNum + 1)));
+                            const rangeStart = searchNum * 10;
+                            const rangeEnd = (searchNum + 1) * 10 - 1;
+                            
+                            // Use OR condition: exact match OR range match for partial
+                            return `([${fieldReferenceName}] = ${searchNum} OR ([${fieldReferenceName}] >= ${rangeStart} AND [${fieldReferenceName}] <= ${rangeEnd}))`;
+                        } else {
+                            // For longer numbers or decimals, use exact match
+                            return `[${fieldReferenceName}] = ${searchNum}`;
+                        }
+                    } else {
+                        // For non-numeric search terms on numeric fields, return impossible condition
+                        return `[System.Id] = -999999`; // Use impossible ID instead
+                    }
+                
+                case 'datetime':
+                    return handleDateField(fieldReferenceName, searchTerm);
+                    
+                
+                case 'boolean':
+                    // For boolean fields
+                    if (searchTerm.toLowerCase() === 'true' || searchTerm.toLowerCase() === 'false') {
+                        return `[${fieldReferenceName}] = ${searchTerm.toLowerCase()}`;
+                    } else {
+                        // For non-boolean search terms on boolean fields, return no results
+                        return `[System.Id] = -999999`; // Use impossible ID instead
+                    }
+                
+                case 'pickliststring':
+                case 'picklistinteger':
+                    // For picklist fields, use exact match or contains
+                    return `[${fieldReferenceName}] CONTAINS '${searchTerm}'`;
+                
+                default:
+                    // First check if this is a date field by name pattern
+                    if (treatAsDateField) {
+                        return handleDateField(fieldReferenceName, searchTerm);
+                    }
+                    
+                    // Smart fallback: check if this looks like a numeric field
+                    const numericFieldNames = ['effort', 'points', 'hours', 'size', 'estimate', 'priority', 'id', 'count', 'number'];
+                    const fieldNameLower = fieldReferenceName.toLowerCase();
+                    const isLikelyNumeric = numericFieldNames.some(name => fieldNameLower.includes(name));
+                    
+                    if (isLikelyNumeric && !isNaN(searchTerm) && searchTerm.trim() !== '') {
+                        // Treat as numeric field with partial matching
+                        const searchNum = parseFloat(searchTerm);
+                        const searchStr = searchTerm.trim();
+                        
+                        // If it's a whole number and less than 6 digits, do partial matching
+                        if (Number.isInteger(searchNum) && searchStr.length <= 5) {
+                            const rangeStart = searchNum * 10;
+                            const rangeEnd = (searchNum + 1) * 10 - 1;
+                            return `([${fieldReferenceName}] = ${searchNum} OR ([${fieldReferenceName}] >= ${rangeStart} AND [${fieldReferenceName}] <= ${rangeEnd}))`;
+                        } else {
+                            return `[${fieldReferenceName}] = ${searchNum}`;
+                        }
+                    } else if (isLikelyNumeric) {
+                        // Numeric field but non-numeric search - return no results
+                        return `[System.Id] = -999999`; // Use impossible ID instead
+                    } else {
+                        // Default to CONTAINS for string-like fields
+                        return `[${fieldReferenceName}] CONTAINS '${searchTerm}'`;
+                    }
+            }
+        }
+
+        async function performSearch() {
+            // Get search term from the appropriate input (text, date, or preset)
+            const textInput = document.getElementById('searchInput');
+            const dateInput = document.getElementById('searchDateInput');
+            const presetSelect = document.getElementById('searchDatePreset');
+            
+            let term = '';
+            if (dateInput.style.display !== 'none' && dateInput.value) {
+                term = dateInput.value;
+            } else if (presetSelect.style.display !== 'none' && presetSelect.value) {
+                term = presetSelect.value;
+            } else {
+                term = textInput.value.trim();
+            }
+            
+            const field = document.getElementById('searchField').value;
+            const results = document.getElementById('results');
+            
+            if (!term) {
+                results.innerHTML = 'Please enter a search term';
+                return;
+            }
+
+            if (!restClient) {
+                results.innerHTML = '<div class="error">REST client not initialized. Please refresh the widget.</div>';
+                return;
+            }
+
+            results.innerHTML = '<div class="loading">Searching for work items...</div>';
+
+            try {
+                // Build WIQL query with appropriate operator based on field type
+                const whereClause = buildSearchQuery(field, term);
+                const wiql = {
+                    query: `SELECT [System.Id], [System.Title], [System.WorkItemType], [System.State], [System.AssignedTo] 
+                           FROM WorkItems 
+                           WHERE ${whereClause}
+                           AND [System.TeamProject] = '${webContext.project.name}'
+                           ORDER BY [System.Id] DESC`
+                };
+
+                // Execute the query
+                const queryResult = await restClient.queryByWiql(wiql, webContext.project.name);
+                
+                if (queryResult.workItems && queryResult.workItems.length > 0) {
+                    // Get work item IDs
+                    const workItemIds = queryResult.workItems.map(wi => wi.id);
+                    
+                    // Get detailed work item information
+                    const workItems = await restClient.getWorkItems(workItemIds, 
+                        ['System.Id', 'System.Title', 'System.WorkItemType', 'System.State', 'System.AssignedTo'],
+                        null, null, null, webContext.project.name);
+                    
+                    displayWorkItems(workItems);
+                } else {
+                    results.innerHTML = `No work items found matching "${term}" in ${field.replace('System.', '')}`;
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                results.innerHTML = `<div class="error">Error searching work items: ${error.message}</div>`;
+            }
+        }
+
+        function displayWorkItems(workItems) {
+            const results = document.getElementById('results');
+            let html = `<div style="margin-bottom: 8px;"><strong>Found ${workItems.length} work item(s):</strong></div>`;
+            
+            workItems.forEach(workItem => {
+                const fields = workItem.fields;
+                const assignedTo = fields['System.AssignedTo'] ? fields['System.AssignedTo'].displayName : 'Unassigned';
+                
+                html += `
+                    <div class="work-item" onclick="openWorkItemDetails(${fields['System.Id']})">
+                        <div class="work-item-title">
+                            <span class="work-item-type">${fields['System.WorkItemType']}</span>
+                            <span class="work-item-state">${fields['System.State']}</span>
+                            <span class="work-item-id">#${fields['System.Id']}</span>
+                        </div>
+                        <div style="margin: 4px 0;">${fields['System.Title']}</div>
+                        <div style="font-size: 12px; color: #666;">Assigned to: ${assignedTo}</div>
+                    </div>
+                `;
+            });
+            
+            results.innerHTML = html;
+        }
+
+        async function openWorkItemDetails(workItemId) {
+            const modal = document.getElementById('workItemModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = `Work Item #${workItemId}`;
+            modalBody.innerHTML = '<div class="loading">Loading work item details...</div>';
+            modal.style.display = 'block';
+            
+            try {
+                // Get detailed work item information
+                const workItem = await restClient.getWorkItem(workItemId, null, null, null, webContext.project.name);
+                displayWorkItemDetails(workItem);
+            } catch (error) {
+                console.error('Error loading work item details:', error);
+                modalBody.innerHTML = `<div class="error">Error loading work item details: ${error.message}</div>`;
+            }
+        }
+
+        function displayWorkItemDetails(workItem) {
+            const modalBody = document.getElementById('modalBody');
+            const fields = workItem.fields;
+            
+            let html = '';
+            
+            // Key fields to display
+            const keyFields = [
+                { key: 'System.Title', label: 'Title' },
+                { key: 'System.WorkItemType', label: 'Type' },
+                { key: 'System.State', label: 'State' },
+                { key: 'System.AssignedTo', label: 'Assigned To' },
+                { key: 'System.CreatedBy', label: 'Created By' },
+                { key: 'System.CreatedDate', label: 'Created Date' },
+                { key: 'System.ChangedDate', label: 'Last Changed' },
+                { key: 'System.AreaPath', label: 'Area Path' },
+                { key: 'System.IterationPath', label: 'Iteration Path' },
+                { key: 'System.Tags', label: 'Tags' },
+                { key: 'System.Description', label: 'Description' },
+                { key: 'Microsoft.VSTS.Common.Priority', label: 'Priority' },
+                { key: 'Microsoft.VSTS.Common.Severity', label: 'Severity' }
+            ];
+            
+            keyFields.forEach(field => {
+                if (fields[field.key]) {
+                    let value = fields[field.key];
+                    
+                    // Format different field types
+                    if (field.key.includes('Date')) {
+                        value = new Date(value).toLocaleDateString() + ' ' + new Date(value).toLocaleTimeString();
+                    } else if (field.key === 'System.AssignedTo' || field.key === 'System.CreatedBy') {
+                        value = value.displayName || value;
+                    } else if (field.key === 'System.Description') {
+                        // Truncate long descriptions
+                        if (value.length > 500) {
+                            value = value.substring(0, 500) + '...';
+                        }
+                    }
+                    
+                    html += `
+                        <div class="detail-row">
+                            <div class="detail-label">${field.label}:</div>
+                            <div class="detail-value">${value}</div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // Add link to open in Azure DevOps
+            const webUrl = `${webContext.host.uri}${webContext.project.name}/_workitems/edit/${workItem.id}`;
+            html += `
+                <div class="detail-row">
+                    <div class="detail-label">Actions:</div>
+                    <div class="detail-value">
+                        <a href="${webUrl}" target="_blank" style="color: #0078d4; text-decoration: none;">
+                            � Open in Azure DevOps
+                        </a>
+                    </div>
+                </div>
+            `;
+            
+            modalBody.innerHTML = html;
+        }
+
+        function closeModal() {
+            document.getElementById('workItemModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            const modal = document.getElementById('workItemModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
