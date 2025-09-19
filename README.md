@@ -39,7 +39,7 @@ The Work Item Search Widget is a powerful Azure DevOps dashboard extension that 
 2. Upload to your Azure DevOps organization or Visual Studio Marketplace
 3. Add the widget to your dashboard
 
-Alternatively, install directly from the Visual Studio Marketplace once published.
+Alternatively, install directly from the Visual Studio Marketplace (https://marketplace.visualstudio.com/azuredevops) by searching for "Work Item Search Widget".
 
 ## Usage
 
