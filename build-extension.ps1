@@ -7,17 +7,37 @@ $ErrorActionPreference = "Stop"
 
 try {
     # Check if tfx-cli is installed
+    Write-Host "Checking for tfx-cli..." -ForegroundColor Yellow
+    
+    # Try to get tfx version
+    $tfxInstalled = $false
     try {
-        $tfxVersion = tfx --version 2>$null
-        if ($LASTEXITCODE -ne 0) {
-            throw "tfx-cli not found"
+        # Use Get-Command to check if tfx exists
+        $tfxCmd = Get-Command tfx -ErrorAction SilentlyContinue
+        if ($tfxCmd) {
+            $tfxVersion = & tfx version 2>$null
+            if ($tfxVersion -and $LASTEXITCODE -eq 0) {
+                $tfxInstalled = $true
+                Write-Host "Using tfx-cli: $tfxVersion" -ForegroundColor Green
+            }
         }
-        Write-Host "Using tfx-cli version: $tfxVersion" -ForegroundColor Yellow
     } catch {
-        Write-Host "tfx-cli is not installed. Installing globally..." -ForegroundColor Yellow
+        # Command not found or failed
+    }
+    
+    if (-not $tfxInstalled) {
+        Write-Host "tfx-cli is not installed or not working. Installing globally..." -ForegroundColor Yellow
         npm install -g tfx-cli
         if ($LASTEXITCODE -ne 0) {
             throw "Failed to install tfx-cli. Please install Node.js and npm first."
+        }
+        
+        # Verify installation
+        $tfxVersion = & tfx version 2>$null
+        if ($tfxVersion -and $LASTEXITCODE -eq 0) {
+            Write-Host "tfx-cli installed successfully: $tfxVersion" -ForegroundColor Green
+        } else {
+            throw "tfx-cli installation failed or not accessible"
         }
     }
 
