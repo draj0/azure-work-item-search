@@ -186,6 +186,15 @@
         .close:hover {
             color: #000;
         }
+        .action-link {
+            color: #0078d4;
+            text-decoration: none;
+            cursor: pointer;
+        }
+        .action-link:hover {
+            color: #106ebe;
+            text-decoration: underline;
+        }
         .detail-row {
             margin: 10px 0;
             padding: 8px 0;
@@ -1079,8 +1088,11 @@
                 <div class="detail-row">
                     <div class="detail-label">Actions:</div>
                     <div class="detail-value">
-                        <a href="${webUrl}" target="_blank" style="color: #0078d4; text-decoration: none;">
-                            � Open in Azure DevOps
+                        <a href="${webUrl}" target="_blank" class="action-link" style="margin-right: 16px;">
+                            🔗 Open in Azure DevOps
+                        </a>
+                        <a href="#" onclick="closeModal(); return false;" class="action-link">
+                            ✕ Close
                         </a>
                     </div>
                 </div>
@@ -1100,6 +1112,17 @@
                 modal.style.display = 'none';
             }
         }
+
+        // Close modal when pressing Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' || event.keyCode === 27) {
+                const modal = document.getElementById('workItemModal');
+                if (modal && modal.style.display === 'block') {
+                    closeModal();
+                    event.preventDefault();
+                }
+            }
+        });
     </script>
 </body>
 </html>

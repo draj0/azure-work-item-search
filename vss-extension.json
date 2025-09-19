@@ -1,7 +1,7 @@
 {
     "manifestVersion": 1,
     "id": "work-item-search-widget",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "name": "Work Item Search Widget",
     "description": "Enhanced dashboard widget for searching Azure Boards work items with intelligent field detection, flexible date ranges, and smart query building capabilities",
     "publisher": "drajan",
