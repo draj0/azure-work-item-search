@@ -9,6 +9,8 @@
     "categories": ["Azure Boards"],
     "tags": ["workitems", "search", "dashboard", "azure-boards", "query", "filter"],
     
+    "public": true,
+    
     "targets": [
         {
             "id": "Microsoft.VisualStudio.Services"

@@ -5,8 +5,12 @@
   "main": "search-widget.html",
   "scripts": {
     "build": "powershell -ExecutionPolicy Bypass -File ./build-extension.ps1",
-    "clean": "Remove-Item *.vsix -Force -ErrorAction SilentlyContinue",
-    "package": "tfx extension create --manifest-globs vss-extension.json"
+    "publish": "powershell -ExecutionPolicy Bypass -File ./build-extension.ps1 -Publish",
+    "share": "powershell -ExecutionPolicy Bypass -File ./build-extension.ps1 -Share -ShareWith",
+    "clean": "powershell -Command \"Get-ChildItem -Path '.' -Filter '*.vsix' | Remove-Item -Force -ErrorAction SilentlyContinue\"",
+    "package": "tfx extension create --manifest-globs vss-extension.json",
+    "login": "tfx login",
+    "logout": "tfx logout"
   },
   "repository": {
     "type": "git",

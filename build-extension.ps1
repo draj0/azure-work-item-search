@@ -1,5 +1,12 @@
 # PowerShell script to rebuild the Azure DevOps extension
 
+param(
+    [switch]$Publish,
+    [switch]$Share,
+    [string]$ShareWith = "",
+    [switch]$UpdateVersion
+)
+
 Write-Host "Building Azure DevOps Extension..." -ForegroundColor Green
 
 # Set error action preference
@@ -59,7 +66,30 @@ try {
         if ($newVsix) {
             Write-Host "Extension built successfully: $($newVsix.Name)" -ForegroundColor Green
             Write-Host "File size: $([math]::Round($newVsix.Length / 1MB, 2)) MB" -ForegroundColor Cyan
-            Write-Host "You can now upload this to the Visual Studio Marketplace or install it directly in Azure DevOps." -ForegroundColor Cyan
+            
+            # Publishing options
+            if ($Publish) {
+                Write-Host "Publishing extension to Visual Studio Marketplace..." -ForegroundColor Yellow
+                tfx extension publish --vsix $newVsix.Name
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "Extension published successfully!" -ForegroundColor Green
+                } else {
+                    Write-Host "Publishing failed. Make sure you're logged in with 'tfx login'" -ForegroundColor Red
+                }
+            } elseif ($Share -and $ShareWith) {
+                Write-Host "Sharing extension with organization: $ShareWith" -ForegroundColor Yellow
+                tfx extension publish --vsix $newVsix.Name --share-with $ShareWith
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Host "Extension shared successfully!" -ForegroundColor Green
+                } else {
+                    Write-Host "Sharing failed. Make sure you're logged in with 'tfx login'" -ForegroundColor Red
+                }
+            } else {
+                Write-Host "You can now:" -ForegroundColor Cyan
+                Write-Host "  1. Upload manually: https://marketplace.visualstudio.com/manage" -ForegroundColor Cyan
+                Write-Host "  2. Publish via CLI: .\build-extension.ps1 -Publish" -ForegroundColor Cyan
+                Write-Host "  3. Share with org: .\build-extension.ps1 -Share -ShareWith 'YourOrgName'" -ForegroundColor Cyan
+            }
         } else {
             throw "Extension built but .vsix file not found!"
         }
