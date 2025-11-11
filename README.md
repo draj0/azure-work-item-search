@@ -95,6 +95,9 @@ Initial release
 ### 1.0.2
 Better close for work item detail popup
 
+### 2.0.36
+Added theme support. Colors now follow users system theme selection
+
 ## Support
 
 For issues, feature requests, or contributions:
