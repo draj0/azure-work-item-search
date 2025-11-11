@@ -6,24 +6,37 @@
     <script src="sdk/scripts/VSS.SDK.min.js"></script>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
     <style>
+        /* Reset and Base Layout */
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        
         /* Container and Layout */
         .widget-container { 
             padding: 16px; 
             font-family: Segoe UI, Arial, sans-serif;
             background: #f3f6fb;
-            border: 1px solid #d1e6fa;
-            border-radius: 8px;
+            border: none;
+            border-radius: 0;
             height: 100%;
             box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
         }
         .header { 
             display: flex; 
             justify-content: space-between; 
             align-items: center; 
             margin-bottom: 16px; 
+            flex-shrink: 0;
         }
         .search-section { 
             margin-bottom: 16px; 
+            flex-shrink: 0;
         }
         .search-controls { 
             display: flex; 
@@ -55,6 +68,21 @@
             color: white; 
             border: none; 
             cursor: pointer; 
+            border-radius: 4px;
+            align-self: flex-start;
+        }
+        .clear-button {
+            padding: 4px 12px;
+            background: #f3f3f3;
+            color: #333;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        .clear-button:hover {
+            background: #e0e0e0;
         }
         
         /* Form Elements */
@@ -78,15 +106,43 @@
             margin-bottom: 16px; 
             display: none;
             border-radius: 6px;
+            flex-shrink: 0;
         }
         
         /* Results and Work Items */
         .results { 
-            border: 1px solid #e0e0e0; 
-            padding: 16px; 
-            min-height: 100px;
-            max-height: 300px;
+            border: 1px solid #e0e0e0;
+            padding: 0; 
+            flex: 1 1 0;
+            min-height: 0;
             overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .results::-webkit-scrollbar {
+            width: 8px;
+        }
+        .results::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .results::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+        .results:hover::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+        }
+        .results::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        .results:empty::before {
+            content: 'Enter a search term to find work items';
+            color: #666;
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
         }
         .work-item {
             border: 1px solid #ddd;
@@ -153,15 +209,31 @@
         }
         .modal-content {
             background-color: #fefefe;
-            margin: 10% auto;
+            margin: 5% auto;
             padding: 20px;
             border: none;
             border-radius: 8px;
-            width: 80%;
-            max-width: 600px;
-            max-height: 70%;
+            width: 90%;
+            max-width: 900px;
+            max-height: 85%;
             overflow-y: auto;
             box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        .modal-content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 4px;
+        }
+        .modal-content:hover::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+        }
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
         .modal-header {
             display: flex;
@@ -208,6 +280,138 @@
         .detail-value {
             color: #333;
             word-wrap: break-word;
+        }
+        
+        /* Dark Theme */
+        body.dark-theme .widget-container {
+            background: #1e1e1e;
+        }
+        body.dark-theme .title {
+            color: #4fc3f7;
+        }
+        body.dark-theme .config-toggle {
+            color: #e0e0e0;
+        }
+        body.dark-theme .search-button {
+            background: #0e639c;
+            color: #ffffff;
+        }
+        body.dark-theme .search-button:hover {
+            background: #1177bb;
+        }
+        body.dark-theme .clear-button {
+            background: #2d2d30;
+            color: #e0e0e0;
+            border: 1px solid #3e3e42;
+        }
+        body.dark-theme .clear-button:hover {
+            background: #3e3e42;
+        }
+        body.dark-theme .search-input,
+        body.dark-theme .search-select,
+        body.dark-theme #defaultField {
+            background: #2d2d30;
+            border: 1px solid #3e3e42;
+            color: #e0e0e0;
+        }
+        body.dark-theme .config-panel {
+            background: #252526;
+            border: 2px solid #0e639c;
+        }
+        body.dark-theme .config-panel h4,
+        body.dark-theme .config-panel label,
+        body.dark-theme .config-panel small {
+            color: #e0e0e0;
+        }
+        body.dark-theme .results {
+            border: 1px solid #3e3e42;
+            background: #1e1e1e;
+            color: #e0e0e0;
+        }
+        body.dark-theme .results:empty::before {
+            color: #999;
+        }
+        body.dark-theme .results::-webkit-scrollbar-thumb {
+            background: #3e3e42;
+        }
+        body.dark-theme .results:hover::-webkit-scrollbar-thumb {
+            background: #5a5a5a;
+        }
+        body.dark-theme .results::-webkit-scrollbar-thumb:hover {
+            background: #6e6e6e;
+        }
+        body.dark-theme .work-item {
+            border: 1px solid #3e3e42;
+            background: #252526;
+        }
+        body.dark-theme .work-item:hover {
+            background: #2d2d30;
+            border-color: #4fc3f7;
+            box-shadow: 0 2px 4px rgba(79,195,247,0.2);
+        }
+        body.dark-theme .work-item-title {
+            color: #4fc3f7;
+        }
+        body.dark-theme .work-item-id {
+            color: #999;
+        }
+        body.dark-theme .work-item-type {
+            background: #1e3a5f;
+            color: #64b5f6;
+        }
+        body.dark-theme .work-item-state {
+            background: #1b3d1b;
+            color: #81c784;
+        }
+        body.dark-theme .loading {
+            color: #999;
+        }
+        body.dark-theme .error {
+            color: #f48fb1;
+            background: #3d1e1e;
+        }
+        body.dark-theme .modal {
+            background-color: rgba(0,0,0,0.7);
+        }
+        body.dark-theme .modal-content {
+            background-color: #252526;
+            color: #e0e0e0;
+        }
+        body.dark-theme .modal-content::-webkit-scrollbar-thumb {
+            background: #3e3e42;
+        }
+        body.dark-theme .modal-content:hover::-webkit-scrollbar-thumb {
+            background: #5a5a5a;
+        }
+        body.dark-theme .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #6e6e6e;
+        }
+        body.dark-theme .modal-title {
+            color: #4fc3f7;
+        }
+        body.dark-theme .modal-header {
+            border-bottom: 1px solid #3e3e42;
+        }
+        body.dark-theme .close {
+            color: #999;
+        }
+        body.dark-theme .close:hover {
+            color: #e0e0e0;
+        }
+        body.dark-theme .action-link {
+            color: #4fc3f7;
+        }
+        body.dark-theme .action-link:hover {
+            color: #80d4fa;
+        }
+        body.dark-theme .detail-row {
+            border-bottom: 1px solid #3e3e42;
+        }
+        body.dark-theme .detail-label {
+            color: #999;
+        }
+        body.dark-theme .detail-value {
+            color: #e0e0e0;
         }
     </style>
 </head>
@@ -288,9 +492,7 @@
             </div>
         </div>
         
-        <div class="results" id="results">
-            Enter a search term to find work items
-        </div>
+        <div class="results" id="results"></div>
     </div>
 
     <!-- Work Item Details Modal -->
@@ -314,6 +516,24 @@
         let widgetHelpers;
         let allFields = []; // Store field definitions for type checking
         let pendingWidgetSettings = null; // Store widget settings until fields are loaded
+
+        // Dark theme detection and application
+        function applyTheme() {
+            // Use CSS media query for color scheme preference
+            if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.body.classList.add('dark-theme');
+            }
+            
+            // Listen for system color scheme changes
+            if (window.matchMedia) {
+                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+                    document.body.classList.toggle('dark-theme', e.matches);
+                });
+            }
+        }
+
+        // Apply theme on load
+        applyTheme();
 
         VSS.require(["TFS/Dashboards/WidgetHelpers", "TFS/WorkItemTracking/RestClient", "VSS/Context"], 
         function (WidgetHelpers, WorkItemTrackingRestClient, VSSContext) {
@@ -630,7 +850,20 @@
 
         function toggleConfig() {
             const panel = document.getElementById('configPanel');
-            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            const searchSection = document.querySelector('.search-section');
+            const resultsSection = document.getElementById('results');
+            
+            if (panel.style.display === 'none') {
+                // Show config, hide search and results
+                panel.style.display = 'block';
+                searchSection.style.display = 'none';
+                resultsSection.style.display = 'none';
+            } else {
+                // Hide config, show search and results
+                panel.style.display = 'none';
+                searchSection.style.display = 'block';
+                resultsSection.style.display = 'block';
+            }
         }
 
         function saveConfig() {
@@ -648,6 +881,8 @@
                 }
                 
                 document.getElementById('configPanel').style.display = 'none';
+                document.querySelector('.search-section').style.display = 'block';
+                document.getElementById('results').style.display = 'block';
                 alert('Configuration saved! Default search field set to: ' + defaultField.replace('System.', ''));
             } catch (error) {
                 console.error('Error saving configuration:', error);
@@ -657,6 +892,8 @@
 
         function cancelConfig() {
             document.getElementById('configPanel').style.display = 'none';
+            document.querySelector('.search-section').style.display = 'block';
+            document.getElementById('results').style.display = 'block';
         }
 
         function handleDateField(fieldReferenceName, searchTerm) {
@@ -993,7 +1230,12 @@
 
         function displayWorkItems(workItems) {
             const results = document.getElementById('results');
-            let html = `<div style="margin-bottom: 8px;"><strong>Found ${workItems.length} work item(s):</strong></div>`;
+            let html = `
+                <div class="results-header">
+                    <strong>Found ${workItems.length} work item(s):</strong>
+                    <button class="clear-button" onclick="clearResults()">Clear</button>
+                </div>
+            `;
             
             workItems.forEach(workItem => {
                 const fields = workItem.fields;
@@ -1013,6 +1255,11 @@
             });
             
             results.innerHTML = html;
+        }
+
+        function clearResults() {
+            const results = document.getElementById('results');
+            results.innerHTML = '';
         }
 
         async function openWorkItemDetails(workItemId) {
